@@ -88,17 +88,6 @@ void draw_food(void)
     generate_food_position();
     mvaddch(food_posy, food_posx, 'k');
 }
-void draw_snake(struct SnakeWatcher *snake)
-{
-    struct SnakeBit *temp = snake->head;
-    while (temp != NULL)
-    {
-        mvaddch(temp->y, temp->x, '*');
-        temp = temp->next;
-    }
-    if ((snake->head->x == food_posx) && (snake->head->y == food_posy)) draw_food();
-    refresh();
-}
 
 bool is_collided(struct SnakeWatcher *snake)
 {
@@ -114,6 +103,23 @@ bool is_collided(struct SnakeWatcher *snake)
         temp = temp->next;
     }
     return false;
+}
+
+bool is_food_eaten(struct SnakeWatcher *snake)
+{
+    return ((snake->head->x == food_posx) && (snake->head->y == food_posy));
+}
+
+void draw_snake(struct SnakeWatcher *snake)
+{
+    struct SnakeBit *temp = snake->head;
+    while (temp != NULL)
+    {
+        mvaddch(temp->y, temp->x, '*');
+        temp = temp->next;
+    }
+    if (is_food_eaten(snake)) draw_food();
+    refresh();
 }
 
 int move_snake(struct SnakeWatcher *snake, int orientation)
@@ -145,14 +151,17 @@ int move_snake(struct SnakeWatcher *snake, int orientation)
     snake->head = new_head;
     if (is_collided(snake)) return 0;
 
-    mvaddch(snake->tail->y, snake->tail->x, ' ');
-    struct SnakeBit *temp = snake->head;
-    while (temp->next->next != NULL)
+    if (!is_food_eaten(snake))
     {
-        temp = temp->next;
+        mvaddch(snake->tail->y, snake->tail->x, ' ');
+        struct SnakeBit *temp = snake->head;
+        while (temp->next->next != NULL)
+        {
+            temp = temp->next;
+        }
+        temp->next = NULL;
+        snake->tail = temp;
     }
-    temp->next = NULL;
-    snake->tail = temp;
 
     return 1;
 }
