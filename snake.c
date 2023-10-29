@@ -8,6 +8,8 @@
 
 #define WIDTH 40
 #define HEIGHT 10
+#define TOP_LEFT_X (COLS - WIDTH)/2
+#define TOP_LEFT_Y (LINES - HEIGHT)/2
 #define INITIAL_LEN 3
 #define LEFT 1
 #define RIGHT -1
@@ -27,28 +29,18 @@ struct SnakeWatcher
 {
     struct SnakeBit *head;
     struct SnakeBit *tail;
-    int len;
     int orientation;
 };
 
-void create_table(void)
+WINDOW *create_window(void)
 {
-    for (int i = 0; i < HEIGHT; i++ )
-    {
-        for(int j = 0; j < WIDTH; j++)
-        {
-            if (j == 0 || j == WIDTH - 1)
-            {
-                mvaddch(i, j, '#');
-                continue;
-            }
-            if (i == 0 || i == HEIGHT - 1)
-            {
-                mvaddch(i, j, '#');
-                continue;
-            }
-        }
-    }
+    WINDOW *local_win;
+
+    local_win = newwin(HEIGHT, WIDTH, TOP_LEFT_Y, TOP_LEFT_X);
+    wborder(local_win, '|', '|', '-', '-', '+', '+', '+', '+');
+    wrefresh(local_win);
+
+    return local_win;
 }
 
 void init_snake(struct SnakeWatcher *snake)
@@ -59,9 +51,8 @@ void init_snake(struct SnakeWatcher *snake)
     head->next = NULL;
     snake->head = head;
     snake->tail = head;
-    snake->len = INITIAL_LEN;
     snake->orientation = RIGHT;
-    for (int i = 0; i < snake->len - 1; i++)
+    for (int i = 0; i < INITIAL_LEN - 1; i++)
     {
         struct SnakeBit * temp = malloc(sizeof(struct SnakeBit));
         temp->x = snake->tail->x -1;
@@ -83,10 +74,10 @@ void generate_food_position(void)
     food_posy = _generate_random_in_range(HEIGHT - 2, 1);
 }
 
-void draw_food(void)
+void draw_food(WINDOW *win)
 {
     generate_food_position();
-    mvaddch(food_posy, food_posx, 'k');
+    mvwaddch(win, food_posy, food_posx, 'k');
 }
 
 bool is_collided(struct SnakeWatcher *snake)
@@ -110,19 +101,19 @@ bool is_food_eaten(struct SnakeWatcher *snake)
     return ((snake->head->x == food_posx) && (snake->head->y == food_posy));
 }
 
-void draw_snake(struct SnakeWatcher *snake)
+void draw_snake(struct SnakeWatcher *snake, WINDOW *win)
 {
     struct SnakeBit *temp = snake->head;
     while (temp != NULL)
     {
-        mvaddch(temp->y, temp->x, '*');
+        mvwaddch(win, temp->y, temp->x, '*');
         temp = temp->next;
     }
-    if (is_food_eaten(snake)) draw_food();
-    refresh();
+    if (is_food_eaten(snake)) draw_food(win);
+    wrefresh(win);
 }
 
-int move_snake(struct SnakeWatcher *snake, int orientation)
+int move_snake(struct SnakeWatcher *snake, int orientation, WINDOW* win)
 {
     struct SnakeBit *new_head = malloc(sizeof(struct SnakeBit));
     if ((snake->orientation + orientation) != 0)
@@ -153,7 +144,8 @@ int move_snake(struct SnakeWatcher *snake, int orientation)
 
     if (!is_food_eaten(snake))
     {
-        mvaddch(snake->tail->y, snake->tail->x, ' ');
+        mvwaddch(win, snake->tail->y, snake->tail->x, ' ');
+        wrefresh(win);
         struct SnakeBit *temp = snake->head;
         while (temp->next->next != NULL)
         {
@@ -168,17 +160,19 @@ int move_snake(struct SnakeWatcher *snake, int orientation)
 
 int main(int argc, char *argv[])
 {
+    WINDOW *snake_window;
     srand(time(NULL));
     initscr();
     raw();
     noecho();
     curs_set(0);
     timeout(1000);
-    create_table();
+    refresh();
+    snake_window = create_window();
     struct SnakeWatcher *snake = malloc(sizeof(struct SnakeWatcher));
     init_snake(snake);
-    draw_snake(snake);
-    draw_food();
+    draw_snake(snake, snake_window);
+    draw_food(snake_window);
     while (true)
     {
         int c;
@@ -187,22 +181,22 @@ int main(int argc, char *argv[])
         int ret;
         switch (c) {
             case 'h':
-                ret = move_snake(snake, LEFT);
+                ret = move_snake(snake, LEFT, snake_window);
                 break;
             case 'l':
-                ret =  move_snake(snake, RIGHT);
+                ret =  move_snake(snake, RIGHT, snake_window);
                 break;
             case 'j':
-                ret = move_snake(snake, DOWN);
+                ret = move_snake(snake, DOWN, snake_window);
                 break;
             case 'k':
-                ret = move_snake(snake, UP);
+                ret = move_snake(snake, UP, snake_window);
                 break;
             default:
-                ret = move_snake(snake, snake->orientation);
+                ret = move_snake(snake, snake->orientation, snake_window);
         }
         if (!ret) break;
-        draw_snake(snake);
+        draw_snake(snake, snake_window);
     }
     endwin();
     return 0;
