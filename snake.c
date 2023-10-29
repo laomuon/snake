@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <ncurses.h>
 #include <unistd.h>
+#include <time.h>
 
 #define WIDTH 40
 #define HEIGHT 10
@@ -13,12 +14,13 @@
 #define UP 2
 #define DOWN -2
 
+int food_posx, food_posy;
+
 struct SnakeBit
 {
     int x;
     int y;
     struct SnakeBit *next;
-    int orientation;
 };
 
 struct SnakeWatcher
@@ -70,6 +72,22 @@ void init_snake(struct SnakeWatcher *snake)
     }
 }
 
+
+int _generate_random_in_range(int upper, int lower)
+{
+    return (rand() % (upper-lower+1)) + lower;
+}
+void generate_food_position(void)
+{
+    food_posx = _generate_random_in_range(WIDTH - 2, 1);
+    food_posy = _generate_random_in_range(HEIGHT - 2, 1);
+}
+
+void draw_food(void)
+{
+    generate_food_position();
+    mvaddch(food_posy, food_posx, 'k');
+}
 void draw_snake(struct SnakeWatcher *snake)
 {
     struct SnakeBit *temp = snake->head;
@@ -78,15 +96,22 @@ void draw_snake(struct SnakeWatcher *snake)
         mvaddch(temp->y, temp->x, '*');
         temp = temp->next;
     }
+    if ((snake->head->x == food_posx) && (snake->head->y == food_posy)) draw_food();
     refresh();
 }
 
-bool is_collided(struct SnakeBit *snake)
+bool is_collided(struct SnakeWatcher *snake)
 {
-    if (snake->x == 0 || snake->x == WIDTH - 1 ||
-    snake->y == 0 || snake->y == HEIGHT - 1)
+    struct SnakeBit *temp = snake->head->next;
+    if (temp->x == 0 || temp->x == WIDTH - 1 ||
+    temp->y == 0 || temp->y == HEIGHT - 1)
     {
         return true;
+    }
+    while (temp != NULL)
+    {
+        if ((temp->x == snake->head->x) && (temp->y == snake->head->y)) return true;
+        temp = temp->next;
     }
     return false;
 }
@@ -116,9 +141,9 @@ int move_snake(struct SnakeWatcher *snake, int orientation)
             new_head->y = snake->head->y - 1;
             break;
     }
-    if (is_collided(new_head)) return 0;
     new_head->next = snake->head;
     snake->head = new_head;
+    if (is_collided(snake)) return 0;
 
     mvaddch(snake->tail->y, snake->tail->x, ' ');
     struct SnakeBit *temp = snake->head;
@@ -134,6 +159,7 @@ int move_snake(struct SnakeWatcher *snake, int orientation)
 
 int main(int argc, char *argv[])
 {
+    srand(time(NULL));
     initscr();
     raw();
     noecho();
@@ -143,6 +169,7 @@ int main(int argc, char *argv[])
     struct SnakeWatcher *snake = malloc(sizeof(struct SnakeWatcher));
     init_snake(snake);
     draw_snake(snake);
+    draw_food();
     while (true)
     {
         int c;
