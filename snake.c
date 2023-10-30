@@ -69,15 +69,19 @@ int _generate_random_in_range(int upper, int lower)
 {
     return (rand() % (upper-lower+1)) + lower;
 }
-void generate_food_position(void)
+void generate_food_position(WINDOW *win)
 {
     food_posx = _generate_random_in_range(WIDTH - 2, 1);
     food_posy = _generate_random_in_range(HEIGHT - 2, 1);
+    if ((mvwinch(win, food_posy, food_posx) & A_CHARTEXT) != ' ')
+    {
+        generate_food_position(win);
+    }
 }
 
 void draw_food(WINDOW *win)
 {
-    generate_food_position();
+    generate_food_position(win);
     mvwaddch(win, food_posy, food_posx, 'k');
     wrefresh(win);
 }
