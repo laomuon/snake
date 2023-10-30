@@ -17,6 +17,7 @@
 #define DOWN -2
 
 int food_posx, food_posy;
+int score=0;
 
 struct SnakeBit
 {
@@ -32,11 +33,11 @@ struct SnakeWatcher
     int orientation;
 };
 
-WINDOW *create_window(void)
+WINDOW *create_window(int height, int width, int top_left_y, int top_left_x)
 {
     WINDOW *local_win;
 
-    local_win = newwin(HEIGHT, WIDTH, TOP_LEFT_Y, TOP_LEFT_X);
+    local_win = newwin(height, width, top_left_y, top_left_x);
     wborder(local_win, '|', '|', '-', '-', '+', '+', '+', '+');
     wrefresh(local_win);
 
@@ -78,6 +79,7 @@ void draw_food(WINDOW *win)
 {
     generate_food_position();
     mvwaddch(win, food_posy, food_posx, 'k');
+    wrefresh(win);
 }
 
 bool is_collided(struct SnakeWatcher *snake)
@@ -109,7 +111,11 @@ void draw_snake(struct SnakeWatcher *snake, WINDOW *win)
         mvwaddch(win, temp->y, temp->x, '*');
         temp = temp->next;
     }
-    if (is_food_eaten(snake)) draw_food(win);
+    if (is_food_eaten(snake)) 
+    {
+        draw_food(win);
+        score++;
+    }
     wrefresh(win);
 }
 
@@ -158,9 +164,15 @@ int move_snake(struct SnakeWatcher *snake, int orientation, WINDOW* win)
     return 1;
 }
 
+void update_score(WINDOW* window)
+{
+    mvwprintw(window, 1, 1, "Score: %d", score);
+    wrefresh(window);
+}
+
 int main(int argc, char *argv[])
 {
-    WINDOW *snake_window;
+    WINDOW *snake_window, *score_window;
     srand(time(NULL));
     initscr();
     raw();
@@ -168,11 +180,13 @@ int main(int argc, char *argv[])
     curs_set(0);
     timeout(1000);
     refresh();
-    snake_window = create_window();
+    snake_window = create_window(HEIGHT, WIDTH, TOP_LEFT_Y, TOP_LEFT_X);
+    score_window = create_window(3, WIDTH, TOP_LEFT_Y+HEIGHT-1, TOP_LEFT_X);
     struct SnakeWatcher *snake = malloc(sizeof(struct SnakeWatcher));
     init_snake(snake);
     draw_snake(snake, snake_window);
     draw_food(snake_window);
+    update_score(score_window);
     while (true)
     {
         int c;
@@ -197,6 +211,7 @@ int main(int argc, char *argv[])
         }
         if (!ret) break;
         draw_snake(snake, snake_window);
+        update_score(score_window);
     }
     endwin();
     return 0;
